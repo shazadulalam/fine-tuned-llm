@@ -24,7 +24,7 @@ def run_pipeline(max_samples=None):
         len(datasets["train"]), len(datasets["validation"]), len(datasets["test"]),
     )
 
-    logger.info("Preprocessing and deduplicating...")
+    logger.info("Preprocessing and remove duplicate...")
     from datasets import DatasetDict
     processed = {}
     for split_name in datasets:
@@ -37,7 +37,7 @@ def run_pipeline(max_samples=None):
     )
 
     # model training
-    
+
     logger.info("Initializing model and trainer...")
     model_config = ModelConfig()
     lora_config = LoraConfig()
@@ -49,6 +49,7 @@ def run_pipeline(max_samples=None):
     output_path = f"{training_config.output_dir}/final_model"
     eval_results = train_and_save(trainer, output_path)
 
+    logger.info("Evaluation results: %s", json.dumps(eval_results, indent=2))
     logger.info("Training complete. Loss: %s", json.dumps(eval_results, indent=2))
     logger.info("Model saved to %s", output_path)
 

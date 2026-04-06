@@ -10,6 +10,7 @@ def load_finetuned_model(
 ) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
 
     """model with fine-tuned LoRA adapter weights"""
+    
     tokenizer = AutoTokenizer.from_pretrained(base_model_id)
     tokenizer.pad_token = tokenizer.eos_token
 
@@ -31,6 +32,7 @@ def generate_response(
 ) -> str:
 
     """Generating response for a prompt"""
+
     formatted = f"### Instruction:\n{prompt}\n\n### Response:\n"
     inputs = tokenizer(formatted, return_tensors="pt").to(model.device)
 

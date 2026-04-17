@@ -42,9 +42,44 @@ class RAGRetriever:
         )
         return (
             f"### Instruction:\n"
-            f"Answer the question based on the provided context. "
+            f"Answer the question based on the given context. "
             f"If the context doesn't contain enough information, say so.\n\n"
             f"### Context:\n{context}\n\n"
             f"### Question:\n{query}\n\n"
             f"### Response:\n"
         )
+    
+    def generate(self, prompt: str) -> str:
+        
+        inputs = self.tokenizer(
+            prompt, return_tensors="pt", truncation=True, max_length=2048
+        ).to(self.model.device)
+
+        with torch.no_grad():
+            output_ids = self.model.generate(
+                **inputs,
+                max_new_tokens=self.max_new_tokens,
+                temperature=0.7,
+                top_p=0.9,
+                do_sample=True,
+                pad_token_id=self.tokenizer.eos_token_id,
+            )
+
+        generated = output_ids[0][inputs["input_ids"].shape[1]:]
+        return self.tokenizer.decode(generated, skip_special_tokens=True).strip()
+
+    def query(self, question: str) -> Dict:
+
+        """retrieve context, build prompt, generate answer"""
+
+        context_chunks = self.retrieve(question)
+        prompt = self.build_prompt(question, context_chunks)
+        answer = self.generate(prompt)
+        return {
+            "question": question,
+            "answer": answer,
+            "sources": [
+                {"source": c["source"], "score": c["score"], "text": c["text"][:200]}
+                for c in context_chunks
+            ],
+        }

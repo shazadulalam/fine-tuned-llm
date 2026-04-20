@@ -1,3 +1,5 @@
+import math
+import torch
 from trl import SFTTrainer, SFTConfig
 from datasets import DatasetDict
 
@@ -15,7 +17,7 @@ def build_training_args(config: TrainingConfig) -> SFTConfig:
         learning_rate=config.learning_rate,
         optim=config.optim,
         logging_steps=config.logging_steps,
-        eval_strategy=config.eval_strategy,
+        eval_strategy=config.evaluation_strategy,
         save_strategy=config.save_strategy,
         load_best_model_at_end=config.load_best_model_at_end,
         bf16=config.bf16,
@@ -23,6 +25,29 @@ def build_training_args(config: TrainingConfig) -> SFTConfig:
         max_length=config.max_seq_length,
         report_to="none",
     )
+
+def compute_metrics(eval_pred):
+    logits, labels = eval_pred
+
+    # Convert to torch tensors
+    logits = torch.tensor(logits)
+    labels = torch.tensor(labels)
+
+    # Shift for causal language modeling
+    shift_logits = logits[..., :-1, :].contiguous()
+    shift_labels = labels[..., 1:].contiguous()
+
+    loss_fct = torch.nn.CrossEntropyLoss(ignore_index=-100)
+    loss = loss_fct(
+        shift_logits.view(-1, shift_logits.size(-1)),
+        shift_labels.view(-1)
+    ).item()
+
+    perplexity = math.exp(loss) if loss < 20 else float("inf")
+
+    return {
+        "perplexity": perplexity
+    }
 
 
 def create_trainer(
@@ -37,13 +62,16 @@ def create_trainer(
     model, tokenizer = load_model_for_training(model_config, lora_config)
     sft_config = build_training_args(training_config)
 
-    return SFTTrainer(
+    trainer = SFTTrainer(
         model=model,
         train_dataset=datasets["train"],
         eval_dataset=datasets["validation"],
         args=sft_config,
         processing_class=tokenizer,
+        compute_metrics=compute_metrics,
     )
+
+    return trainer
 
 
 def train_and_save(trainer: SFTTrainer, output_path: str) -> dict:

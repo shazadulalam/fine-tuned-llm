@@ -33,6 +33,7 @@ class VectorStore:
             (self.documents[idx], float(dist))
             for idx, dist in zip(indices[0], distances[0])
             if idx < len(self.documents)
+        ]
     
     @property
     def total_documents(self) -> int:

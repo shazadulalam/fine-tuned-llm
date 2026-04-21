@@ -2,6 +2,7 @@ from typing import Tuple
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from peft import LoraConfig as PeftLoraConfig, get_peft_model, prepare_model_for_kbit_training
 from configs.default import ModelConfig, LoraConfig
 
 DTYPE_MAP = {

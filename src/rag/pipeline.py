@@ -36,3 +36,52 @@ def ingest_pdfs(rag_config: RAGConfig) -> VectorStore:
     logger.info("Vector store saved to %s (%d vectors).",
                 rag_config.vector_store_path, store.total_documents)
     return store
+
+def build_rag_retriever(
+    rag_config: RAGConfig,
+    model_config: ModelConfig,
+    model_path: str,
+) -> RAGRetriever:
+
+    """model loading, embeddings, vector store, and return a RAGRetriever."""
+
+    logger.info("Loading fine-tuned model from %s ...", model_path)
+    model, tokenizer = load_finetuned_model(model_config.model_id, model_path)
+
+    logger.info("Loading embedding model ...")
+    embed_model = EmbeddingModel(rag_config.embedding_model)
+
+    if os.path.exists(os.path.join(rag_config.vector_store_path, "index.faiss")):
+        logger.info("Loading existing vector store from %s ...", rag_config.vector_store_path)
+        store = VectorStore.load(rag_config.vector_store_path, embed_model.dimension)
+    else:
+        logger.info("No existing vector store found. Ingesting PDFs ...")
+        store = ingest_pdfs(rag_config)
+
+    return RAGRetriever(
+        model=model,
+        tokenizer=tokenizer,
+        embedding_model=embed_model,
+        vector_store=store,
+        top_k=rag_config.top_k,
+        max_new_tokens=rag_config.max_new_tokens,
+    )
+
+
+def run_rag_pipeline(
+    rag_config: RAGConfig,
+    model_config: ModelConfig,
+    model_path: str,
+    queries: list[str],
+) -> list[dict]:
+
+    retriever = build_rag_retriever(rag_config, model_config, model_path)
+
+    results = []
+    for query in queries:
+        logger.info("Query: %s", query)
+        result = retriever.query(query)
+        logger.info("Answer: %s", result["answer"][:200])
+        results.append(result)
+
+    return results

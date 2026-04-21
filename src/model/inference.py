@@ -31,7 +31,7 @@ def generate_response(
     top_p: float = 0.9,
 ) -> str:
 
-    """Generating response for a prompt"""
+    """Generating response from a prompt"""
 
     formatted = f"### Instruction:\n{prompt}\n\n### Response:\n"
     inputs = tokenizer(formatted, return_tensors="pt").to(model.device)
